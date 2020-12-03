@@ -24,7 +24,7 @@ const char* P_UDP_MESSAGE = UDP_MESSAGE;
 int current_mode_of_operation = OPERATION_TYPE_NORMAL;
 
 WiFiUDP Udp;
-IPAddress my_ip, my_gateway, subnet_mask, remote_ip;
+IPAddress remote_ip;
 unsigned int local_port = 8888;      // local port to listen on
 int incoming_byte, num_ssid, key_index = 0;  // network key Index number
 byte mac[6];
@@ -37,8 +37,10 @@ void giveMeFive() {
 
 void printMainMenu() {  
   Serial.print("A – Display MAC address\nL - List available wifi networks\nC – Connect to a wifi network\nD – Disconnect from the network\nI – Display connection info\nM – Display the menu options\nV - change the current mode to: ");
-  if (current_mode_of_operation == OPERATION_TYPE_NORMAL) Serial.print("UDP_BROADCAST\n");
-  else Serial.print("NORMAL\n");
+  if (current_mode_of_operation == OPERATION_TYPE_NORMAL)
+    Serial.print("UDP_BROADCAST\n");
+  else
+    Serial.print("NORMAL\n");
   }
 
 void printMacAddresses() {  
@@ -47,15 +49,15 @@ void printMacAddresses() {
 }
 
 void networkList() {
-  num_ssid = WiFi.scanNetworks();   
-  if (num_ssid != -1) {
+  num_ssid = WiFi.scanNetworks(); 
+  if (num_ssid > -1) {
     for (int this_net = 0; this_net < num_ssid; this_net++) {     
       Serial.print(this_net + 1);  // print the network number      
       Serial.println(". " + WiFi.SSID(this_net) + " [" + wifiAuthModeToString(WiFi.encryptionType(this_net)).c_str() + "]  (" + WiFi.RSSI(this_net)+" dBm)");  // print the ssid, encryption type and rssi for each network found:
     }
   }
   else
-    Serial.println("Couldn't get a wifi connection");
+    Serial.println("Couldn't get a wifi connection!");
 }
 
 void connect() {  
@@ -115,20 +117,16 @@ void emitUDP()
     current_mode_of_operation = OPERATION_TYPE_NORMAL;
   }
   else {
-    my_ip = WiFi.localIP();
-    //my_gateway = WiFi.gatewayIP();
-    //subnet_mask = WiFi.subnetMask();
-    remote_ip = my_ip;
+    remote_ip = WiFi.gatewayIP();
     remote_ip[3] = 255;
 
-    time_t seconds;
-    seconds = time (NULL);
+    time_t seconds = time (NULL);
 
     // exit from loop every 10 seconds
     while (seconds %10 !=0)
       seconds = time (NULL);
 
-    // Serial.print(seconds); Serial.print(" seconds passed, sending UDP to "); Serial.println(remote_ip);
+    //Serial.print(seconds); Serial.print(" seconds passed, sending UDP to "); Serial.println(remote_ip);
     delay(1000);  // wait for one more second    
     sendUDP(remote_ip, local_port);  // and finally send it
   }
@@ -146,7 +144,7 @@ void loop() {
   delay(42); // is there the final answer, o mighty?
 
   if (current_mode_of_operation == OPERATION_TYPE_UDP_BROADCAST) {
-    Serial.println("V - change the current mode to NORMAL");
+    //Serial.println("V - change the current mode to NORMAL");
     emitUDP();
   }
   else
