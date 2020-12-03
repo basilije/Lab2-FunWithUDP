@@ -29,7 +29,7 @@ wl_status_t status = WL_IDLE_STATUS;  // the Wifi radio's status
 
 
 void giveMeFive() {
-  delay(5000);  // five second break
+  delay(2500);  // 2.5 seconds break
 }
 
 void printMainMenu() {  
@@ -126,17 +126,19 @@ void emitUDP()
     time_t seconds = time(NULL);
 
     // exit from loop every 10 seconds
-    while (seconds %10 !=0 && current_mode_of_operation == OPERATION_TYPE_UDP_BROADCAST)
+    while (seconds %10 !=0 && current_mode_of_operation == OPERATION_TYPE_UDP_BROADCAST) {
       seconds = time(NULL);
       if (Serial.available() > 0) {
         int sr = Serial.read();
-        Serial.print(sr);
         if (sr == 27)
           changeModeToNormal();
-      }      
+        }      
+    }
 
-    sendUDP(remote_ip, local_port);  // and finally send it
-    delay(1000);  // wait for one more second
+    if (seconds %10 ==0){
+      sendUDP(remote_ip, local_port);  // and finally send it
+      delay(1000);  // wait for one more second
+    }
   }
 }
 
