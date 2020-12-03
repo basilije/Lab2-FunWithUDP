@@ -12,8 +12,8 @@
 
 
 enum operation_type { 
-    OPERATION_TYPE_NORMAL = 0,
-    OPERATION_TYPE_UDP_BROADCAST = 1,
+    OPERATION_TYPE_NORMAL,
+    OPERATION_TYPE_UDP_BROADCAST,
 };
 
 const unsigned int UDP_PORT = 8888;
