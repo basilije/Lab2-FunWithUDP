@@ -18,11 +18,9 @@ enum operation_type {
 
 const unsigned int UDP_PORT = 8888;
 const unsigned int UDP_PACKET_SIZE = 64;
-const char UDP_MESSAGE[] = "<| DoN'T MoVE DoN'T SToP |> {<waka waka waka waka>} ";
+const char UDP_MESSAGE[] = "^^^^^^<| DoN'T MoVE DoN'T SToP {<waka waka waka waka>} |>^^^^^^";
 const char* P_UDP_MESSAGE = UDP_MESSAGE;
-
 int current_mode_of_operation = OPERATION_TYPE_NORMAL;
-
 WiFiUDP Udp;
 IPAddress remote_ip;
 unsigned int local_port = 8888;      // local port to listen on
@@ -89,15 +87,22 @@ void connectionInfo() {
   Serial.print("Gateway:\t");  Serial.println(WiFi.gatewayIP());
 } 
 
+void changeModeToNormal() {
+  current_mode_of_operation = OPERATION_TYPE_NORMAL;
+  Serial.println("Mode changed to NORMAL");
+}
+
+void changeModeToUDP() {
+  current_mode_of_operation = OPERATION_TYPE_UDP_BROADCAST;
+  Serial.println("Mode changed to UDP_BROADCAST");
+}
+
 void changeMode() {
   if (current_mode_of_operation == OPERATION_TYPE_NORMAL) {
-    current_mode_of_operation = OPERATION_TYPE_UDP_BROADCAST;
-    Serial.println("Mode changed to UDP_BROADCAST");
+    changeModeToUDP();
     }
-  else {
-    current_mode_of_operation = OPERATION_TYPE_NORMAL;
-    Serial.println("Mode changed to NORMAL");
-    }
+  else 
+    changeModeToNormal();
 }
 
 void sendUDP(IPAddress remote_ip, unsigned int local_port) {
@@ -120,15 +125,21 @@ void emitUDP()
     remote_ip = WiFi.gatewayIP();
     remote_ip[3] = 255;
 
-    time_t seconds = time (NULL);
+    time_t seconds = time(NULL);
 
     // exit from loop every 10 seconds
-    while (seconds %10 !=0)
-      seconds = time (NULL);
+    while (seconds %10 !=0 && current_mode_of_operation == OPERATION_TYPE_UDP_BROADCAST)
+      seconds = time(NULL);
+      if (Serial.available() > 0) {
+        int sr = Serial.read();
+        Serial.print(sr);
+        if (sr == 27)
+          changeModeToNormal();
+      }      
 
-    //Serial.print(seconds); Serial.print(" seconds passed, sending UDP to "); Serial.println(remote_ip);
-    delay(1000);  // wait for one more second    
     sendUDP(remote_ip, local_port);  // and finally send it
+    delay(1000);  // wait for one more second    
+
   }
 }
 
@@ -140,16 +151,16 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("–––––––––––––––––––––––––––––––––––––––––\n");
+  Serial.println("–––––––––––––––––––––––––––––––––––––––––");
   delay(42); // is there the final answer, o mighty?
 
   if (current_mode_of_operation == OPERATION_TYPE_UDP_BROADCAST) {
-    //Serial.println("V - change the current mode to NORMAL");
+    Serial.println("ESC - change the current mode to NORMAL");
     emitUDP();
   }
   else
   {
-    incoming_byte = int(*serialPrompt("Choice: ", 1).c_str()); // read the key, convert to const char* and back to ascii int
+    incoming_byte = int(*serialPrompt("\nChoice: ", 1).c_str()); // read the key, convert to const char* and back to ascii int
     Serial.println("");
     
     if (incoming_byte > 96)  // to_upper string int function, based on ascii table
