@@ -24,7 +24,8 @@ const char* P_UDP_MESSAGE = UDP_MESSAGE;
 int current_mode_of_operation = OPERATION_TYPE_NORMAL;
 
 WiFiUDP Udp;
-
+IPAddress my_ip, my_gateway, subnet_mask, remote_ip;
+unsigned int local_port = 8888;      // local port to listen on
 int incoming_byte, num_ssid, key_index = 0;  // network key Index number
 byte mac[6];
 wl_status_t status = WL_IDLE_STATUS;  // the Wifi radio's status
@@ -97,6 +98,16 @@ void changeMode() {
     }
 }
 
+void sendUDP(IPAddress remote_ip, unsigned int local_port) {
+  Udp.begin(local_port);
+  Udp.beginPacket(remote_ip, local_port);
+
+  for (int i = 0; i < UDP_PACKET_SIZE; i++)
+    Udp.write(P_UDP_MESSAGE[i]);
+
+  Udp.endPacket();
+}
+
 void emitUDP()
 {
   if (WiFi.status() != WL_CONNECTED) {
@@ -104,11 +115,10 @@ void emitUDP()
     current_mode_of_operation = OPERATION_TYPE_NORMAL;
   }
   else {
-    unsigned int local_port = 8888;      // local port to listen on
-    IPAddress my_ip = WiFi.localIP();
-    IPAddress my_gateway = WiFi.gatewayIP();
-    IPAddress subnet_mask = WiFi.subnetMask();
-    IPAddress remote_ip = my_ip;
+    my_ip = WiFi.localIP();
+    //my_gateway = WiFi.gatewayIP();
+    //subnet_mask = WiFi.subnetMask();
+    remote_ip = my_ip;
     remote_ip[3] = 255;
 
     time_t seconds;
@@ -118,15 +128,9 @@ void emitUDP()
     while (seconds %10 !=0)
       seconds = time (NULL);
 
-    Serial.print(seconds); Serial.print(" seconds passed, sending UDP to "); Serial.println(remote_ip);
+    // Serial.print(seconds); Serial.print(" seconds passed, sending UDP to "); Serial.println(remote_ip);
     delay(1000);  // wait for one more second    
-    Udp.begin(local_port);
-    Udp.beginPacket(remote_ip, local_port);
-
-    for (int i = 0; i < UDP_PACKET_SIZE; i++)
-      Udp.write(P_UDP_MESSAGE[i]);
-
-    Udp.endPacket();    
+    sendUDP(remote_ip, local_port);  // and finally send it
   }
 }
 
