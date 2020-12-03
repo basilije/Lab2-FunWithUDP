@@ -10,7 +10,6 @@
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
 
-
 enum operation_type { 
     OPERATION_TYPE_NORMAL,
     OPERATION_TYPE_UDP_BROADCAST,
@@ -98,9 +97,8 @@ void changeModeToUDP() {
 }
 
 void changeMode() {
-  if (current_mode_of_operation == OPERATION_TYPE_NORMAL) {
+  if (current_mode_of_operation == OPERATION_TYPE_NORMAL)
     changeModeToUDP();
-    }
   else 
     changeModeToNormal();
 }
@@ -138,8 +136,7 @@ void emitUDP()
       }      
 
     sendUDP(remote_ip, local_port);  // and finally send it
-    delay(1000);  // wait for one more second    
-
+    delay(1000);  // wait for one more second
   }
 }
 
