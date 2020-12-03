@@ -1,11 +1,18 @@
+/***********************************************************************************
+* Project: Lab2 - Exercise #2 - Fun with UDP
+* Class: CIT324 - Networking for IoT
+* Author: Vasilije Mehandzic
+*
+* File: main.cpp
+* Description: Main file for Exercise #2
+* Date: 12/3/2020
+**********************************************************************************/
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <WiFi.h>
 #include "serial-utils.h"
 #include "wifi-utils.h"
-#include <stdio.h>
-#include <time.h>
-
 // for disable brownout detector https://github.com/espressif/arduino-esp32/issues/863
 #include "soc/soc.h"
 #include "soc/rtc_cntl_reg.h"
@@ -26,12 +33,12 @@ unsigned int local_port = 8888;      // local port to listen on
 int incoming_byte, num_ssid, key_index = 0;  // network key Index number
 byte mac[6];
 wl_status_t status = WL_IDLE_STATUS;  // the Wifi radio's status
+time_t seconds = time(NULL);
 
-
-void giveMeFive() {
-  delay(2500);  // 2.5 seconds break
-}
-
+/***********************************************************************************
+* Purpose: Print the main menu content.
+* No arguments, no returns
+**********************************************************************************/
 void printMainMenu() {  
   Serial.print("A – Display MAC address\nL - List available wifi networks\nC – Connect to a wifi network\nD – Disconnect from the network\nI – Display connection info\nM – Display the menu options\nV - change the current mode to: ");
   if (current_mode_of_operation == OPERATION_TYPE_NORMAL)
@@ -40,11 +47,19 @@ void printMainMenu() {
     Serial.print("NORMAL\n");
   }
 
+/***********************************************************************************
+* Purpose: Print on the serial port the mac address in use.
+* No arguments, no returns 
+**********************************************************************************/
 void printMacAddresses() {  
     WiFi.macAddress(mac);  // get your MAC address
     Serial.println(macAddressToString(mac));  // and print  your MAC address
 }
 
+/***********************************************************************************
+* Purpose: Scan and detailed serial port print of the Network APs found
+* No arguments, no returns
+**********************************************************************************/
 void networkList() {
   num_ssid = WiFi.scanNetworks(); 
   if (num_ssid > -1) {
@@ -57,27 +72,38 @@ void networkList() {
     Serial.println("Couldn't get a wifi connection!");
 }
 
+/***********************************************************************************
+* Purpose: Connect to the chosen network from the list 
+* No arguments, no returns
+**********************************************************************************/
 void connect() {  
-  int net_position_in_array = std::atoi(serialPrompt("\nChoose Network: ", 3).c_str()) - 1;
-  String ssid = WiFi.SSID(net_position_in_array);
-  String network_password = serialPrompt("Password: ", 32);
+  String ssid = WiFi.SSID(std::atoi(serialPrompt("\nChoose Network: ", 3).c_str()) - 1);
+  String network_password = serialPrompt("Password: ", 42);  // that's it
   const char* cch_ssid = ssid.c_str();
   const char* cch_net_pss = network_password.c_str();
   Serial.print("Connecting to "); Serial.print(cch_ssid); Serial.print("...\n\n");
   WiFi.begin(cch_ssid, cch_net_pss);
-  giveMeFive();
+  delay(2000);
   Serial.println(wifiStatusToString(WiFi.status()).c_str()); 
 }
 
+/***********************************************************************************
+* Purpose: Disconnect WiFi and print the current status
+* No arguments, no returns
+**********************************************************************************/
 void disconnect() {
   Serial.print("Disonnecting... ");
   WiFi.disconnect();
-  giveMeFive();
+  delay(2000);
   status = WiFi.status();
   Serial.print("Current status: ");
   Serial.println(wifiStatusToString(status).c_str());   
 }
 
+/***********************************************************************************
+* Purpose: Print the connection info
+* No arguments, no returns
+**********************************************************************************/
 void connectionInfo() {
   Serial.print("Status:\t\t");  Serial.println(wifiStatusToString(WiFi.status()).c_str());
   Serial.print("Network:\t");  Serial.println(WiFi.SSID());
@@ -86,16 +112,28 @@ void connectionInfo() {
   Serial.print("Gateway:\t");  Serial.println(WiFi.gatewayIP());
 } 
 
+/***********************************************************************************
+* Purpose: Change the operation mode to normal
+* No arguments, no returns 
+**********************************************************************************/
 void changeModeToNormal() {
   current_mode_of_operation = OPERATION_TYPE_NORMAL;
   Serial.println("Mode changed to NORMAL");
 }
 
+/***********************************************************************************
+* Purpose: Change the operation mode to udp broadcast
+* No arguments, no returns
+**********************************************************************************/
 void changeModeToUDP() {
   current_mode_of_operation = OPERATION_TYPE_UDP_BROADCAST;
-  Serial.println("Mode changed to UDP_BROADCAST");
+  Serial.println("Mode changed to UDP_BROADCAST\nESC - change the current mode to NORMAL");
 }
 
+/***********************************************************************************
+* Purpose: Switch between two main operation modes
+* No arguments, no returns 
+**********************************************************************************/
 void changeMode() {
   if (current_mode_of_operation == OPERATION_TYPE_NORMAL)
     changeModeToUDP();
@@ -103,17 +141,11 @@ void changeMode() {
     changeModeToNormal();
 }
 
-void sendUDP(IPAddress remote_ip, unsigned int local_port) {
-  Udp.begin(local_port);
-  Udp.beginPacket(remote_ip, local_port);
-
-  for (int i = 0; i < UDP_PACKET_SIZE; i++)
-    Udp.write(P_UDP_MESSAGE[i]);
-
-  Udp.endPacket();
-}
-
-void emitUDP()
+/***********************************************************************************
+* Purpose: Send earlies specified UDP packet with possible loop break with ESC key
+* No arguments, no returns
+**********************************************************************************/
+void sendUDP()
 {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("You need to connect first! Switching back to the normal mode.\n");
@@ -121,13 +153,10 @@ void emitUDP()
   }
   else {
     remote_ip = WiFi.gatewayIP();
-    remote_ip[3] = 255;
-
-    time_t seconds = time(NULL);
+    remote_ip[3] = 255;    
 
     // exit from loop every 10 seconds
-    while (seconds %10 !=0 && current_mode_of_operation == OPERATION_TYPE_UDP_BROADCAST) {
-      seconds = time(NULL);
+    while (time(NULL) - seconds < 10 && current_mode_of_operation == OPERATION_TYPE_UDP_BROADCAST) {
       if (Serial.available() > 0) {
         int sr = Serial.read();
         if (sr == 27)
@@ -135,30 +164,45 @@ void emitUDP()
         }      
     }
 
-    if (seconds %10 ==0){
-      sendUDP(remote_ip, local_port);  // and finally send it
-      delay(1000);  // wait for one more second
-    }
+    Udp.begin(local_port);
+    Udp.beginPacket(remote_ip, local_port);
+
+    for (int i = 0; i < UDP_PACKET_SIZE; i++)
+      Udp.write(P_UDP_MESSAGE[i]);
+
+    Udp.endPacket();
+    Udp.stop();    
+    seconds = time(NULL);
   }
 }
 
-
+/***********************************************************************************
+* Purpose: Setup the port, detector and connect to the WhiskeyBug
+* No arguments, no returns
+**********************************************************************************/
 void setup() {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //disable brownout detector
   Serial.begin(115200,  SERIAL_8N1); // initialize the serial port
   printMainMenu();\
 }
 
-void loop() {
+/***********************************************************************************
+* Purpose: The main loop
+* No arguments, no returns
+**********************************************************************************/
+void loop()
+{
   Serial.println("–––––––––––––––––––––––––––––––––––––––––");
-  delay(42); // is there the final answer, o mighty?
+  delay(1000);
 
-  if (current_mode_of_operation == OPERATION_TYPE_UDP_BROADCAST) {
-    Serial.println("ESC - change the current mode to NORMAL");
-    emitUDP();
-  }
-  else
+  switch (current_mode_of_operation)
   {
+
+  case OPERATION_TYPE_UDP_BROADCAST:
+    sendUDP();
+    break;
+
+  case OPERATION_TYPE_NORMAL:
     incoming_byte = int(*serialPrompt("\nChoice: ", 1).c_str()); // read the key, convert to const char* and back to ascii int
     Serial.println("");
     
@@ -195,6 +239,8 @@ void loop() {
       case 86:  // "V"=86; "m"=118
         changeMode();
         break;  
-    } 
+    }
+
+    break; 
   }
 }
