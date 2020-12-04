@@ -40,7 +40,7 @@ time_t seconds = time(NULL);
 * No arguments, no returns
 **********************************************************************************/
 void printMainMenu() {  
-  Serial.print("A – Display MAC address\nL - List available wifi networks\nC – Connect to a wifi network\nD – Disconnect from the network\nI – Display connection info\nM – Display the menu options\nV - change the current mode to: ");
+  Serial.print("A – Display MAC address\nL - List available wifi networks\nC – Connect to a wifi network\nD – Disconnect from the network\nI – Display connection info\nM – Display the menu options\nV - change the current mode to ");
   if (current_mode_of_operation == OPERATION_TYPE_NORMAL)
     Serial.print("UDP_BROADCAST\n");
   else
@@ -118,7 +118,7 @@ void connectionInfo() {
 **********************************************************************************/
 void changeModeToNormal() {
   current_mode_of_operation = OPERATION_TYPE_NORMAL;
-  Serial.println("Mode changed to NORMAL");
+  Serial.println("NORMAL MODE");
 }
 
 /***********************************************************************************
@@ -127,7 +127,7 @@ void changeModeToNormal() {
 **********************************************************************************/
 void changeModeToUDP() {
   current_mode_of_operation = OPERATION_TYPE_UDP_BROADCAST;
-  Serial.println("Mode changed to UDP_BROADCAST\nESC - change the current mode to NORMAL");
+  Serial.println("UDP_BROADCAST MODE\nESC - change the current mode to NORMAL");
 }
 
 /***********************************************************************************
@@ -142,6 +142,17 @@ void changeMode() {
 }
 
 /***********************************************************************************
+* Purpose: Check if the key "Esc" is pressed
+* No arguments, no returns, affects some globals
+**********************************************************************************/
+void checkForESCPressed() {
+  if (Serial.available() > 0)
+      serial_read = Serial.read();
+  if (serial_read == 27)
+    changeModeToNormal();
+}
+
+/***********************************************************************************
 * Purpose: Send earlies specified UDP packet with possible loop break with ESC key
 * No arguments, no returns
 **********************************************************************************/
@@ -149,20 +160,16 @@ void sendUDP()
 {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("You need to connect first! Switching back to the normal mode.\n");
-    current_mode_of_operation = OPERATION_TYPE_NORMAL;
+    changeModeToNormal();
   }
   else {
     remote_ip = WiFi.gatewayIP();
-    remote_ip[3] = 255;    
-
+    remote_ip[3] = 255;
+    checkForESCPressed();
+    
     // exit from loop every 10 seconds
     while (time(NULL) - seconds < 10 && current_mode_of_operation == OPERATION_TYPE_UDP_BROADCAST) {
-      if (Serial.available() > 0) {
-        int sr = Serial.read();
-        if (sr == 27)
-          changeModeToNormal();
-        }      
-    }
+      checkForESCPressed();
 
     Udp.begin(local_port);
     Udp.beginPacket(remote_ip, local_port);
